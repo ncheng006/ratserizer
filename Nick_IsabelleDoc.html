@@ -1,0 +1,165 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+    <style>
+        body {
+            padding: 100px;
+            width: 1000px;
+            margin: auto;
+            text-align: left;
+            font-weight: 300;
+            font-family: 'Open Sans', sans-serif;
+            color: #121212;
+        }
+        h1, h2, h3, h4 {
+            font-family: 'Source Sans Pro', sans-serif;
+        }
+    </style>
+    <title>CS 184 Rasterizer</title>
+    <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+    <link href="https://fonts.googleapis.com/css?family=Open+Sans|Source+Sans+Pro" rel="stylesheet">
+</head>
+
+
+<body>
+
+<h1 align="middle">CS 184: Computer Graphics and Imaging, Spring 2018</h1>
+<h1 align="middle">Project 1: Rasterizer</h1>
+<h2 align="middle">ISABELLE LIU AND NICHOLAS CHENG, CS184-rats</h2>
+
+<br><br>
+
+
+    <h2 align="middle">Overview</h2>
+    <p>Give a high-level overview of what you implemented in this project. Think about what you've built as a whole. Share your thoughts on what interesting things you've learned from completing the project.</p>
+    <p>In this project, we built a rasterizer that allows us to take data in the form of points, textures, and colors and turn them into viewable SVG (scalable vector graphic) files. We began with drawing through simple triangles, and then moved on to improving the quality through techniques like supersampling and antialiasing. We also covered concepts like rotation matrices to make a robot move and barycentric interpolation to blend colors. We finished with learning how to map textures with pixel and level sampling. Overall, this project really helped us build our understanding of the lecture content both conceptually and as far as implementation goes.</p>
+    <h2 align="middle">Section I: Rasterization</h2>
+
+    <h3 align="middle">Part 1: Rasterizing single-color triangles</h3>
+
+    <p>We first made sure that all the vertices coordinates were aligned in a clockwise direction in rasterize_triangle. If they weren’t ,we readjusted the vertice points. We then continued to make sure that the triangles are within the bounding box. Finally, we looped through every pixel to see whether they are within the triangle indicated by the three vertices. If it is, we called fill_pixel. It’s no worse than one that checks each sample within the bounding box because that’s exactly what we do (we talked to a TA and they said this was fine)! This is without supersampling.</p>
+    <div align="middle">
+        <img src="./images/disconnected_vertex.png" align = "middle" width = "400px"/>
+        <figcaption align="middle"><i>This is test 4 zoomed on an interesting part, a disconnected vertex!</i></figcaption>
+    </div>
+
+
+    <h3 align="middle">Part 2: Antialiasing triangles</h3>
+    <p> In supersampling, the general goal is to split each pixel into smaller pixels, and then averaging those smaller pixels out in order to achieve a “blurring effect”. Our algorithm does just that! We essentially just loop through each pixel in our bounding box, and within those pixels, we split them up sampling_rate times (by using a nested for-loop that will go through sqrt(sampling_rate) times) and then place our new supersampled pixels in the sample buffer.  However, we end up using too much memory this way, so we need to figure out a way to compact the process a bit. We do so by downsizing all the pixels in our temporary sample buffer by averaging them out and placing them in the final frame buffer. This means we modified our resolve_to_framebuffer(), set_framebuffer_target(), and set_sample_rate() methods as they are used as helpers throughout the pipeline. Supersampling is useful for getting rid of “jaggies” and smoothing out graphics! By supersampling, and “blurring” our graphics, we antialiased by taking the averages instead of just taking the direct color in each pixel of our shapes. </p>
+    <div align="middle">
+        <table>
+            <tr>
+                <td>
+                    <img src="./images/disconnected_vertex.png" align="middle" width="300px"/>
+                    <figcaption align="middle"><i>Test 4: sample rate of 1.</i></figcaption>
+                </td>
+                <td>
+                    <img src="./images/sample_rate_4.png" align="middle" width="300px"/>
+                    <figcaption align="middle"><i>Test 4: sample rate of 4.</i></figcaption>
+                </td>
+                <td>
+                    <img src="./images/sample_rate_16.png" align="middle" width="300px"/>
+                    <figcaption align="middle"><i>Test 4: sample rate of 16.</i></figcaption>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <h3 align="middle">Part 3: Transforms</h3>
+    <p>This is our new robot! My inspiration for this was to create a karate master who loves the color pink. In this pose, he is showing us a flying kick.</p>
+    <div align="middle">
+        <img src="./images/Kungfu_Man.png" align="middle" width="500px"/>
+        <figcaption align="middle"> <i>Everybody was Kung Fu fighting!</i> </figcaption>
+    </div>
+
+    <h2 align="middle">Section II: Sampling</h2>
+
+    <h3 align="middle">Part 4: Barycentric coordinates</h3>
+    <p>From our understandings, barycentric coordinates are essentially coefficients that allow you to interpolate any point within the triangle using the corners values! If the coordinates of the corners are A, B, C, then any combination of coefficients denoted by ɑA + βB + ɣC will allow you to get to any part of the triangle! The sum of these coordinates must = 1 and each of the coefficients must be positive. Also, A, B, C don’t necessarily have to be coordinates, they can be texture, color, positions, etc! Below is an svg file of a triangle where each vertex of the triangle is red, blue, and green, so (1, 0, 0), (0, 1, 0), and (0, 0, 1) if we are looking at it from an RGB standpoint! As we can see, the colors begin to gradient throughout the triangle, because it’s interpolating from these vertices with the barycentric coordinates! If we look at the center of the bottom edge, we see that the triangle gradually becomes purple! Our barycentric coords would probably be something like (.5, 0, .5), 50% red and 50% blue!</p>
+
+    <div align="middle">
+        <table>
+            <tr>
+                <td>
+                    <img src="./images/gradient_color_triangle.png" align="middle" width="300px"/>
+                    <figcaption align="middle"><i>Triangle with red, blue, and green vertices</i></figcaption>
+                </td>
+                <td>
+                    <img src="./images/gradient_color_circles.png" align="middle" width="300px"/>
+                    <figcaption align="middle"><i>Test 7 </i></figcaption>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <h3 align="middle">Part 5: "Pixel sampling" for texture mapping</h3>
+    <p>We implemented texture sampling using nearest and bilinear interpolation in this task. Essentially, we apply a 2D texture to a surface that can be either 2D or 3D. We used two different pixel sampling methods to enable this.</p>
+    <p>The nearest sampling method allows us to take the u-v coordinates and return the nearest texel closest to this coordinate using get_texel. </p>
+    <p>The bilinear sampling method allows us to take the u-v coordinates and then take the 4 nearest texels and does interpolation to return an average texel color. We did two linear interpolations horizontally and vertically to get the weighted average texel color.</p>
+    <p>We can see visually that bilinear nearly gives us a better picture than nearest because it takes into account more samples and averages those instead of discounting it completely. The edges tend to be more smooth with much less jagginess. If there is less variance between neighbors, with high resolutions, bilinear and nearest sampling nearly produces the same results.</p>
+
+<div align="middle">
+    <table style="width=100%">
+        <tr>
+            <td>
+                <img src="./images/pNearest_1.png" align="middle" width="400px"/>
+                <figcaption align="middle"><i>Nearest Sampling, Subsample Rate = 1.</i></figcaption>
+            </td>
+            <td>
+                <img src="./images/pNearest_16.png" align="middle" width="400px"/>
+                <figcaption align="middle"><i>Nearest Sampling, Subsample Rate = 16.</i></figcaption>
+            </td>
+        </tr>
+        <br>
+        <tr>
+            <td>
+                <img src="./images/pLinear_1.png" align="middle" width="400px"/>
+                <figcaption align="middle"><i>Bilinear Sampling, Subsample Rate = 1.</i></figcaption>
+            </td>
+            <td>
+                <img src="./images/pLinear_16.png" align="middle" width="400px"/>
+                <figcaption align="middle"><i>Bilinear Sampling, Subsample Rate = 16.</i></figcaption>
+            </td>
+        </tr>
+    </table>
+</div>
+
+    <h3 align="middle">Part 6: "Level sampling" with mipmaps for texture mapping</h3>
+    <p>Level sampling is effectively a way to reduce textures for objects further away from the image by splitting up regions by levels of details needed. As we continue to incrementally go up in mipmap levels, the resolution of the image lowers and we’re allowed to render more texels for images that include aspects that are further away since they have larger and simpler components. </p>
+    <p>We implement our level sampling in three different ways:</p>
+    <p>L_ZERO: we use zero level sampling</p>
+    <p>L_NEAREST: gets the nearest level by sampling nearby pixels and then taking the norm of the difference between</p>
+    <p>L_LINEAR: gets the level by taking the sum of the upper bound and lower bound of the levels returned by L_NEAREST</p>
+    <p>Tradeoffs:</p>
+    <p>In pixel sampling, we sample each pixel once to determine the color. The technique is faster compared to the other two and requires less memory because we only take one sample per pixel. But when rendering high contrast textures and diagonal edges, the image sometimes become more pixelated and jagged, which also means it has lackluster anti-aliasing techniques at times.</p>
+    <p>In level sampling, it has decent rendering speed and pretty low memory usage since it only renders needed levels of details at each pixel, but it sometimes lead to much blurrier textures. It also has better antialiasing qualities as we are able to use lower mipmap levels to render textures.</p>
+    <p>In number of samples per pixel, this method takes much more memory and processing power than the other techniques because we use multiple samples per pixel. The more samples, the higher the sample rate, the slower the it takes to render the image and the higher the amount of memory it takes. This method provides anti-aliasing quality when rendering high contrast textures.</p>
+
+<div align="middle">
+    <table style="width=100%">
+        <tr>
+            <td>
+                <img src="./images/L_ZERO_P_NEAREST.png" align="middle" width="400px"/>
+                <figcaption align="middle"><i>LSM: ZERO, PSM: NEAREST.</i></figcaption>
+            </td>
+            <td>
+                <img src="./images/L_ZERO_P_LINEAR.png" align="middle" width="400px"/>
+                <figcaption align="middle"><i>LSM: ZERO, PSM: BILINEAR</i></figcaption>
+            </td>
+        </tr>
+        <br>
+        <tr>
+            <td>
+                <img src="./images/L_NEAREST_P_NEAREST.png" align="middle" width="400px"/>
+                <figcaption align="middle"><i>LSM: NEAREST, PSM: NEAREST</i></figcaption>
+            </td>
+            <td>
+                <img src="./images/L_NEAREST_P_LINEAR.png" align="middle" width="400px"/>
+                <figcaption align="middle"><i>LSM: NEAREST, PSM: BILINEAR</i></figcaption>
+            </td>
+        </tr>
+    </table>
+</div>
+
+</body>
+</html>
